@@ -64,10 +64,10 @@ export function verifyHelper(pluginDir: string, expected: string = MT_PTY_SHA256
 	try {
 		data = readRegularFile(helper, HELPER_MAX_BYTES);
 	} catch {
-		throw new PtyError(`The terminal helper is missing (${HELPER_NAME}). Reinstall the plugin with "npm run install-plugin".`);
+		throw new PtyError(`The terminal helper (${HELPER_NAME}) is missing from the plugin folder. Copy the four files from the release zip into it again (Obsidian Sync doesn't sync the helper), or reinstall with "npm run install-plugin".`);
 	}
 	if (!/^[0-9a-f]{64}$/.test(expected) || sha256(data) !== expected) {
-		throw new PtyError(`The terminal helper (${HELPER_NAME}) doesn't match this build. Reinstall the plugin with "npm run install-plugin".`);
+		throw new PtyError(`The terminal helper (${HELPER_NAME}) doesn't match this version of the plugin. Copy the four files from the same release zip into the plugin folder, or reinstall with "npm run install-plugin".`);
 	}
 	try {
 		return stageHelper(data, expected, stageRoot);

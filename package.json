@@ -17,6 +17,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check": "npm run typecheck && npm run test && npm run build",
+    "package": "npm run build && node scripts/package.mjs",
     "install-plugin": "node scripts/install.mjs"
   },
   "dependencies": {

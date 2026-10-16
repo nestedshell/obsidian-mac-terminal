@@ -1,4 +1,4 @@
-import { addIcon, FileSystemAdapter, Notice, Platform, Plugin, TFile, TFolder, type TAbstractFile, type WorkspaceLeaf } from 'obsidian';
+import { addIcon, FileSystemAdapter, Notice, Platform, Plugin, TFile, TFolder, View, type SplitDirection, type TAbstractFile, type WorkspaceLeaf } from 'obsidian';
 import { randomUUID } from 'crypto';
 import * as path from 'path';
 import { toHex, parseColor } from './color';
@@ -135,15 +135,44 @@ export default class MacTerminalPlugin extends Plugin {
 		return this.openTerminal(this.app.workspace.getActiveFile()?.parent ?? this.app.vault.getRoot());
 	}
 
+	/**
+	 * The pane a new split goes next to: the active one, unless it sits in a sidebar
+	 * (the file explorer, after "Open in terminal"); then the note last worked on.
+	 */
+	private splitTarget(): WorkspaceLeaf | null {
+		const workspace = this.app.workspace;
+		const active = workspace.getActiveViewOfType(View)?.leaf ?? null;
+		if (active) {
+			const root = active.getRoot();
+			if (root !== workspace.leftSplit && root !== workspace.rightSplit) return active;
+		}
+		return workspace.getMostRecentLeaf();
+	}
+
+	/**
+	 * A split next to the note, without splitting the screen again and again: an empty
+	 * pane is reused, and next to a terminal the new one becomes a tab in its group.
+	 */
+	private splitLeaf(direction: SplitDirection): WorkspaceLeaf {
+		const workspace = this.app.workspace;
+		const target = this.splitTarget();
+		if (!target) return workspace.getLeaf('split', direction);
+		const type = target.view.getViewType();
+		if (type === 'empty') return target;
+		// The target is the most recent leaf, which is where Obsidian adds a new tab.
+		if (type === VIEW_TYPE) return workspace.getLeaf('tab');
+		return workspace.createLeafBySplit(target, direction);
+	}
+
 	async openTerminal(folder: TFolder, tag?: Tag): Promise<void> {
 		const workspace = this.app.workspace;
 		let leaf: WorkspaceLeaf;
 		switch (this.settings.openLocation) {
 			case 'right':
-				leaf = workspace.getLeaf('split', 'vertical');
+				leaf = this.splitLeaf('vertical');
 				break;
 			case 'below':
-				leaf = workspace.getLeaf('split', 'horizontal');
+				leaf = this.splitLeaf('horizontal');
 				break;
 			case 'window':
 				leaf = workspace.getLeaf('window');

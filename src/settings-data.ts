@@ -24,13 +24,14 @@ export const DEFAULT_SETTINGS: MacTerminalSettings = {
 	background: '',
 	blackBackground: false,
 	showBanner: true,
-	openLocation: 'tab',
+	openLocation: 'right',
 };
 
+/** In the order the settings list them: splits first, as they keep the note in view. */
 export const LOCATIONS: Record<OpenLocation, string> = {
+	right: 'Split to the right (side by side)',
+	below: 'Split below (stacked)',
 	tab: 'New tab',
-	right: 'Split to the right',
-	below: 'Split below',
 	window: 'New window',
 };
 

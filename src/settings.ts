@@ -9,7 +9,7 @@ const TEXT = {
 	black: ['Black background', 'Pure black, like a classic terminal. Turn it off to go back to the color below.'],
 	background: ['Background color', 'Follows the Obsidian theme until you pick a color. Text color adjusts to stay readable.'],
 	banner: ['Startup art', 'Show the ninja octopus and the folder info when a terminal opens.'],
-	location: ['Open terminals in', 'Where new terminals appear.'],
+	location: ['Open terminals in', 'A split keeps the terminal next to the note you are working on.'],
 } as const;
 
 export class MacTerminalSettingTab extends PluginSettingTab {
