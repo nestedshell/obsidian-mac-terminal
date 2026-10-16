@@ -1,0 +1,10 @@
+{
+	"id": "mac-terminal",
+	"name": "Mac Terminal",
+	"version": "1.0.0",
+	"minAppVersion": "1.7.2",
+	"description": "A real terminal in a tab, already in the folder of the note you are working on. macOS only.",
+	"author": "nestedshell",
+	"authorUrl": "https://github.com/nestedshell",
+	"isDesktopOnly": true
+}

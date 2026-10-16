@@ -1,0 +1,88 @@
+/* Mac Terminal: layout of the terminal view. xterm.css is prepended at build time. */
+
+.workspace-leaf-content[data-type="mac-terminal"] .view-content.mac-terminal-view {
+	padding: 0;
+	overflow: hidden;
+	background-color: var(--mac-terminal-background, var(--background-primary));
+}
+
+.mac-terminal-host {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+}
+
+/* FitAddon subtracts the padding of .xterm, so the breathing room goes here. */
+.mac-terminal-host .xterm {
+	height: 100%;
+	padding: 6px 4px 4px 10px;
+}
+
+.mac-terminal-host .xterm:focus,
+.mac-terminal-host .xterm .xterm-helper-textarea:focus {
+	outline: none;
+	box-shadow: none;
+}
+
+.mac-terminal-host .xterm .xterm-viewport {
+	background-color: var(--mac-terminal-background, var(--background-primary));
+}
+
+.mac-terminal-probe {
+	font-family: var(--font-monospace);
+	position: absolute;
+	visibility: hidden;
+	pointer-events: none;
+	width: 0;
+	height: 0;
+	overflow: hidden;
+}
+
+/* Colour dot of a named terminal, in its tab and in its header. */
+.workspace-tab-header.mac-terminal-tagged .workspace-tab-header-inner-title::before,
+.workspace-leaf-content.mac-terminal-tagged .view-header-title::before {
+	content: "";
+	display: inline-block;
+	width: 0.62em;
+	height: 0.62em;
+	margin-inline-end: 0.45em;
+	border-radius: 50%;
+	background-color: var(--mac-terminal-tag);
+	vertical-align: 0.02em;
+}
+
+/* Colour choice in the "Name and color" dialog. */
+.mac-terminal-swatches {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+.mac-terminal-swatches .mac-terminal-swatch {
+	width: 22px;
+	height: 22px;
+	min-width: 0;
+	padding: 0;
+	border: none;
+	border-radius: 50%;
+	box-shadow: none;
+	background-color: var(--mac-terminal-swatch);
+	cursor: var(--cursor);
+}
+
+.mac-terminal-swatches .mac-terminal-swatch.is-none {
+	background: linear-gradient(135deg, transparent 45%, var(--text-faint) 45%, var(--text-faint) 55%, transparent 55%);
+	box-shadow: inset 0 0 0 1.5px var(--text-faint);
+}
+
+.mac-terminal-swatches .mac-terminal-swatch[aria-checked="true"] {
+	outline: 2px solid var(--text-normal);
+	outline-offset: 2px;
+}
+
+.mac-terminal-swatches .mac-terminal-swatch:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 2px;
+}
