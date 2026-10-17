@@ -8,11 +8,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { SHIPPED } from './plugin-files.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 const dist = path.join(root, 'dist', manifest.id);
-const SHIPPED = ['main.js', 'manifest.json', 'styles.css', 'mt-pty'];
 
 for (const file of SHIPPED) {
 	if (!fs.existsSync(path.join(dist, file))) {
@@ -27,11 +27,10 @@ try {
 	const folder = path.join(stage, manifest.id);
 	fs.mkdirSync(folder);
 	for (const file of SHIPPED) fs.copyFileSync(path.join(dist, file), path.join(folder, file));
-	fs.chmodSync(path.join(folder, 'mt-pty'), 0o755);
 
 	const zip = path.join(root, 'dist', `${manifest.id}-${manifest.version}.zip`);
 	fs.rmSync(zip, { force: true });
-	// ditto keeps the executable bit and leaves out macOS metadata (._ files).
+	// ditto leaves out macOS metadata (._ files and extended attributes).
 	execFileSync('/usr/bin/ditto', ['-c', '-k', '--norsrc', '--noextattr', '--noqtn', '--keepParent', folder, zip]);
 
 	const sha = createHash('sha256').update(fs.readFileSync(zip)).digest('hex');

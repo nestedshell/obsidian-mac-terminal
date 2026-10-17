@@ -7,16 +7,18 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // @ts-expect-error plain JS build script
 import { compileHelper } from '../scripts/helper.mjs';
-import { PtyError, PtySession, parseExitReport, verifyHelper, type PtyExit } from '../src/pty';
+import { PtyError, PtySession, parseExitReport, prepareHelper, type PtyExit } from '../src/pty';
 
 let dir: string;
 let helper: string;
 let hash: string;
+let encoded: string;
 
 beforeAll(() => {
 	dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-pty-test-'));
 	helper = compileHelper(path.join(dir, 'mt-pty'));
 	hash = createHash('sha256').update(fs.readFileSync(helper)).digest('hex');
+	encoded = fs.readFileSync(helper).toString('base64');
 }, 60000);
 
 afterAll(() => {
@@ -25,8 +27,8 @@ afterAll(() => {
 
 const ENV = { PATH: '/usr/bin:/bin:/usr/sbin:/sbin', HOME: os.homedir(), TERM: 'xterm-256color', LANG: 'en_US.UTF-8', PS1: '$ ' };
 
-function start(opts: Partial<{ cols: number; rows: number; cwd: string; file: string; args: string[] }> = {}) {
-	const pty = new PtySession(helper, {
+function start(opts: Partial<{ helper: string; cols: number; rows: number; cwd: string; file: string; args: string[] }> = {}) {
+	const pty = new PtySession(opts.helper ?? helper, {
 		file: opts.file ?? '/bin/sh',
 		args: opts.args ?? [],
 		cols: opts.cols ?? 80,
@@ -57,59 +59,62 @@ const alive = (pid: number) => {
 	}
 };
 
-describe('verifyHelper', () => {
+describe('prepareHelper', () => {
 	const stage = () => fs.mkdtempSync(path.join(dir, 'stage-'));
 	const sha = (f: string) => createHash('sha256').update(fs.readFileSync(f)).digest('hex');
 
-	it('runs a private copy of exactly the bytes it checked', () => {
+	it('writes a private copy of exactly the bytes it checked', () => {
 		const root = stage();
-		const staged = verifyHelper(dir, hash, root);
+		const staged = prepareHelper(encoded, hash, root);
 		expect(path.dirname(path.dirname(staged))).toBe(root);
 		expect(sha(staged)).toBe(hash);
 		expect(fs.statSync(staged).mode & 0o777).toBe(0o700);
 		expect(fs.statSync(path.dirname(staged)).mode & 0o777).toBe(0o700);
 		const mtime = fs.statSync(staged).mtimeMs;
-		expect(verifyHelper(dir, hash, root)).toBe(staged);
+		expect(prepareHelper(encoded, hash, root)).toBe(staged);
 		expect(fs.statSync(staged).mtimeMs).toBe(mtime);
 		// A tampered copy is replaced, not run.
 		fs.writeFileSync(staged, 'evil');
-		expect(sha(verifyHelper(dir, hash, root))).toBe(hash);
+		expect(sha(prepareHelper(encoded, hash, root))).toBe(hash);
 	});
-	it('works when a sync tool dropped the executable bit', () => {
-		const plugin = fs.mkdtempSync(path.join(dir, 'plugin-'));
-		fs.copyFileSync(helper, path.join(plugin, 'mt-pty'));
-		fs.chmodSync(path.join(plugin, 'mt-pty'), 0o644);
-		expect(fs.statSync(verifyHelper(plugin, hash, stage())).mode & 0o111).not.toBe(0);
+	it('runs the copy it writes', async () => {
+		const { pty, exited, waitFor } = start({ helper: prepareHelper(encoded, hash, stage()), args: ['-c', 'echo staged-ok'] });
+		await waitFor('staged-ok');
+		expect((await exited).code).toBe(0);
+		expect(pty.pid).toBeGreaterThan(0);
 	});
-	it('rejects a modified or missing helper', () => {
-		expect(() => verifyHelper(dir, '0'.repeat(64), stage())).toThrow(PtyError);
-		expect(() => verifyHelper(dir, 'not-a-hash', stage())).toThrow(PtyError);
-		expect(() => verifyHelper(path.join(dir, 'nowhere'), hash, stage())).toThrow(/missing/);
+	it('rejects bytes that do not match the hash', () => {
+		const damaged = Buffer.from(encoded, 'base64');
+		damaged[damaged.length - 1] ^= 1;
+		expect(() => prepareHelper(damaged.toString('base64'), hash, stage())).toThrow(/damaged/);
+		expect(() => prepareHelper(encoded, '0'.repeat(64), stage())).toThrow(PtyError);
+		expect(() => prepareHelper(encoded, 'not-a-hash', stage())).toThrow(PtyError);
+		expect(() => prepareHelper('', hash, stage())).toThrow(/damaged/);
+		expect(() => prepareHelper(Buffer.alloc(8 * 1024 * 1024).toString('base64'), hash, stage())).toThrow(/damaged/);
 	});
-	it('never follows a link or reads a device or a pipe', () => {
+	it('replaces a link or a pipe planted where the copy goes, without following it', () => {
 		for (const make of [
-			(f: string) => fs.symlinkSync(helper, f),
 			(f: string) => fs.symlinkSync('/dev/zero', f),
 			(f: string) => execFileSync('/usr/bin/mkfifo', [f]),
 		]) {
-			const plugin = fs.mkdtempSync(path.join(dir, 'plugin-'));
-			make(path.join(plugin, 'mt-pty'));
+			const root = stage();
+			const folder = path.join(root, `mac-terminal-${process.getuid?.()}`);
+			fs.mkdirSync(folder, { mode: 0o700 });
+			const target = path.join(folder, `mt-pty-${hash.slice(0, 16)}`);
+			make(target);
 			const t0 = Date.now();
-			expect(() => verifyHelper(plugin, hash, stage())).toThrow(/missing/);
+			expect(prepareHelper(encoded, hash, root)).toBe(target);
 			expect(Date.now() - t0).toBeLessThan(1000);
+			expect(fs.lstatSync(target).isFile()).toBe(true);
+			expect(sha(target)).toBe(hash);
 		}
-	});
-	it('refuses a file far bigger than the helper', () => {
-		const plugin = fs.mkdtempSync(path.join(dir, 'plugin-'));
-		fs.writeFileSync(path.join(plugin, 'mt-pty'), Buffer.alloc(8 * 1024 * 1024));
-		expect(() => verifyHelper(plugin, hash, stage())).toThrow(/missing/);
 	});
 	it('refuses a staging folder that others can write to', () => {
 		const root = stage();
 		const shared = path.join(root, `mac-terminal-${process.getuid?.()}`);
 		fs.mkdirSync(shared);
 		fs.chmodSync(shared, 0o777);
-		expect(() => verifyHelper(dir, hash, root)).toThrow(/private/);
+		expect(() => prepareHelper(encoded, hash, root)).toThrow(/private/);
 	});
 });
 

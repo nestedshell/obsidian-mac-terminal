@@ -1,13 +1,11 @@
 import { App, PluginSettingTab, Setting, requireApiVersion, type SettingDefinitionItem } from 'obsidian';
-import { isHexColor } from './color';
 import { ICON } from './icon';
 import type MacTerminalPlugin from './main';
-import { DEFAULT_SETTINGS, FONT_SIZE_MAX, FONT_SIZE_MIN, LOCATIONS, type MacTerminalSettings, type OpenLocation } from './settings-data';
+import { BACKGROUNDS, DEFAULT_SETTINGS, FONT_SIZE_MAX, FONT_SIZE_MIN, LOCATIONS, type Background, type MacTerminalSettings, type OpenLocation } from './settings-data';
 
 const TEXT = {
 	fontSize: ['Font size', 'Size of the terminal text, in pixels.'],
-	black: ['Black background', 'Pure black, like a classic terminal. Turn it off to go back to the color below.'],
-	background: ['Background color', 'Follows the Obsidian theme until you pick a color. Text color adjusts to stay readable.'],
+	background: ['Background', 'The first follows the Obsidian theme. Open terminals change right away, and text colors adjust to stay readable.'],
 	banner: ['Startup art', 'Show the ninja octopus and the folder info when a terminal opens.'],
 	location: ['Open terminals in', 'A split keeps the terminal next to the note you are working on.'],
 } as const;
@@ -27,13 +25,9 @@ export class MacTerminalSettingTab extends PluginSettingTab {
 				control: { type: 'slider', key: 'fontSize', min: FONT_SIZE_MIN, max: FONT_SIZE_MAX, step: 1, defaultValue: DEFAULT_SETTINGS.fontSize },
 			},
 			{
-				name: TEXT.black[0],
-				desc: TEXT.black[1],
-				control: { type: 'toggle', key: 'blackBackground', defaultValue: DEFAULT_SETTINGS.blackBackground },
-			},
-			{
 				name: TEXT.background[0],
 				desc: TEXT.background[1],
+				aliases: Object.values(BACKGROUNDS).map((b) => b.name),
 				render: (setting) => this.renderBackground(setting),
 			},
 			{
@@ -77,15 +71,6 @@ export class MacTerminalSettingTab extends PluginSettingTab {
 					}),
 			);
 
-		new Setting(containerEl)
-			.setName(TEXT.black[0])
-			.setDesc(TEXT.black[1])
-			.addToggle((toggle) =>
-				toggle.setValue(settings.blackBackground).onChange(async (value) => {
-					await this.plugin.updateSettings({ blackBackground: value });
-				}),
-			);
-
 		this.renderBackground(new Setting(containerEl).setName(TEXT.background[0]).setDesc(TEXT.background[1]));
 
 		new Setting(containerEl)
@@ -110,33 +95,26 @@ export class MacTerminalSettingTab extends PluginSettingTab {
 			);
 	}
 
-	/** Color picker plus a button back to the theme color ("" in the settings). */
+	/** One dot per background, as in the Name and color dialog; hovering shows the name. */
 	private renderBackground(setting: Setting): void {
-		let picker: { setValue(value: string): unknown } | null = null;
-		// ColorComponent.setValue calls onChange synchronously; showing the theme color
-		// after a reset must not save it as a custom color.
-		let showingThemeColor = false;
-		setting
-			.addColorPicker((color) => {
-				picker = color;
-				color.setValue(this.plugin.settings.background || this.plugin.themeBackground()).onChange(async (value) => {
-					if (showingThemeColor || !isHexColor(value)) return;
-					await this.plugin.updateSettings({ background: value.toLowerCase() });
-				});
-			})
-			.addExtraButton((button) =>
-				button
-					.setIcon('rotate-ccw')
-					.setTooltip('Use the theme background')
-					.onClick(async () => {
-						await this.plugin.updateSettings({ background: '' });
-						showingThemeColor = true;
-						try {
-							picker?.setValue(this.plugin.themeBackground());
-						} finally {
-							showingThemeColor = false;
-						}
-					}),
-			);
+		setting.settingEl.addClass('mac-terminal-background-setting');
+		const group =setting.controlEl.createDiv({ cls: 'mac-terminal-swatches', attr: { role: 'radiogroup', 'aria-label': TEXT.background[0] } });
+		const ids = Object.keys(BACKGROUNDS) as Background[];
+		const swatches = ids.map((id) => {
+			const { name, color } = BACKGROUNDS[id];
+			const swatch = group.createEl('button', {
+				cls: color ? 'mac-terminal-swatch mac-terminal-background' : 'mac-terminal-swatch mac-terminal-background is-theme',
+				attr: { type: 'button', role: 'radio', 'aria-label': name },
+			});
+			if (color) swatch.setCssProps({ '--mac-terminal-swatch': color });
+			swatch.addEventListener('click', () => {
+				void this.plugin.updateSettings({ background: id }).then(mark);
+			});
+			return swatch;
+		});
+		const mark = () => {
+			for (const [i, swatch] of swatches.entries()) swatch.setAttr('aria-checked', String(ids[i] === this.plugin.settings.background));
+		};
+		mark();
 	}
 }

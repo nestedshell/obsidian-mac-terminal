@@ -8,12 +8,12 @@ import * as os from 'os';
 import * as path from 'path';
 import type { Writable } from 'stream';
 
-/* global MT_PTY_SHA256 -- injected by scripts/build.mjs, declared in globals.d.ts */
+/* global MT_PTY_SHA256, MT_PTY_BASE64 -- injected by scripts/build.mjs, declared in globals.d.ts */
 
 export const HELPER_NAME = 'mt-pty';
 /** How long the helper gets to hang up the shell before it is killed. */
 const HELPER_KILL_MS = 5000;
-/** The helper is about 100 KB: a much bigger file is not it. */
+/** The helper is about 100 KB: anything much bigger is not it. */
 const HELPER_MAX_BYTES = 4 * 1024 * 1024;
 /** Input waiting for a program that stopped reading; beyond this it is dropped. */
 const INPUT_QUEUE_MAX = 4 * 1024 * 1024;
@@ -53,21 +53,14 @@ function signalName(n: number): string {
 }
 
 /**
- * Checks the helper against the hash baked into main.js and returns the path to
- * run: a copy of the very bytes that were checked, in a folder only this user can
- * write to. Running the copy means nothing can swap the file between the check and
- * the start, and sync tools that drop the executable bit don't matter.
+ * Returns the path of the helper to run: the bytes built into main.js, checked
+ * against their SHA-256 and written to a folder only this user can write to. The
+ * copy is checked again before every use, so a changed file is replaced, never run.
  */
-export function verifyHelper(pluginDir: string, expected: string = MT_PTY_SHA256, stageRoot: string = os.tmpdir()): string {
-	const helper = path.join(pluginDir, HELPER_NAME);
-	let data: Buffer;
-	try {
-		data = readRegularFile(helper, HELPER_MAX_BYTES);
-	} catch {
-		throw new PtyError(`The terminal helper (${HELPER_NAME}) is missing from the plugin folder. Copy the four files from the release zip into it again (Obsidian Sync doesn't sync the helper), or reinstall with "npm run install-plugin".`);
-	}
-	if (!/^[0-9a-f]{64}$/.test(expected) || sha256(data) !== expected) {
-		throw new PtyError(`The terminal helper (${HELPER_NAME}) doesn't match this version of the plugin. Copy the four files from the same release zip into the plugin folder, or reinstall with "npm run install-plugin".`);
+export function prepareHelper(encoded: string = MT_PTY_BASE64, expected: string = MT_PTY_SHA256, stageRoot: string = os.tmpdir()): string {
+	const data = Buffer.from(encoded, 'base64');
+	if (!/^[0-9a-f]{64}$/.test(expected) || data.length === 0 || data.length > HELPER_MAX_BYTES || sha256(data) !== expected) {
+		throw new PtyError(`The terminal helper inside main.js is damaged. Reinstall the plugin.`);
 	}
 	try {
 		return stageHelper(data, expected, stageRoot);
@@ -80,7 +73,7 @@ export function verifyHelper(pluginDir: string, expected: string = MT_PTY_SHA256
  * Reads a file only if it is a regular file of at most `max` bytes. Symbolic links
  * are refused, and devices or pipes are never read (they could block or never end).
  */
-export function readRegularFile(file: string, max: number): Buffer {
+function readRegularFile(file: string, max: number): Buffer {
 	const fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
 	try {
 		const stat = fs.fstatSync(fd);

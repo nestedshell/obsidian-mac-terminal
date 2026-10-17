@@ -1,15 +1,27 @@
 // Settings model and validation (no Obsidian imports, so it can be unit tested).
-import { isHexColor } from './color';
-
 export type OpenLocation = 'tab' | 'right' | 'below' | 'window';
+
+/**
+ * The backgrounds to pick from: the theme's, and a few colours that suit a
+ * terminal (and the octopus). "" means the Obsidian theme's own background.
+ */
+export const BACKGROUNDS = {
+	theme: { name: 'Obsidian theme', color: '' },
+	black: { name: 'Black', color: '#000000' },
+	graphite: { name: 'Graphite', color: '#262626' },
+	midnight: { name: 'Midnight blue', color: '#151b2e' },
+	teal: { name: 'Deep teal', color: '#002b36' },
+	plum: { name: 'Plum', color: '#2a1e33' },
+	paper: { name: 'Paper', color: '#fdf6e3' },
+	white: { name: 'White', color: '#ffffff' },
+} as const satisfies Record<string, { name: string; color: string }>;
+export type Background = keyof typeof BACKGROUNDS;
 
 export interface MacTerminalSettings {
 	/** Font size in pixels. */
 	fontSize: number;
-	/** Background colour as #rrggbb, or "" to follow the Obsidian theme. */
-	background: string;
-	/** Black background, whatever `background` says (switching it off restores that). */
-	blackBackground: boolean;
+	/** The terminal background, from BACKGROUNDS. */
+	background: Background;
 	/** Show the startup art when a terminal opens. */
 	showBanner: boolean;
 	/** Where new terminals open. */
@@ -21,8 +33,7 @@ export const FONT_SIZE_MAX = 32;
 
 export const DEFAULT_SETTINGS: MacTerminalSettings = {
 	fontSize: 13,
-	background: '',
-	blackBackground: false,
+	background: 'theme',
 	showBanner: true,
 	openLocation: 'right',
 };
@@ -41,14 +52,21 @@ export function sanitizeSettings(raw: unknown): MacTerminalSettings {
 	const size = typeof data.fontSize === 'number' && Number.isFinite(data.fontSize) ? Math.round(data.fontSize) : DEFAULT_SETTINGS.fontSize;
 	return {
 		fontSize: Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, size)),
-		background: isHexColor(data.background) ? data.background.toLowerCase() : '',
-		blackBackground: typeof data.blackBackground === 'boolean' ? data.blackBackground : DEFAULT_SETTINGS.blackBackground,
+		background: backgroundOf(data),
 		showBanner: typeof data.showBanner === 'boolean' ? data.showBanner : DEFAULT_SETTINGS.showBanner,
 		openLocation: typeof data.openLocation === 'string' && Object.hasOwn(LOCATIONS, data.openLocation) ? (data.openLocation as OpenLocation) : DEFAULT_SETTINGS.openLocation,
 	};
 }
 
-/** The background the terminal uses: black, a custom colour, or "" for the theme's. */
+/** A background from the list; settings from early builds had a black switch instead. */
+function backgroundOf(data: Record<string, unknown>): Background {
+	for (const value of [data.background, data.backgroundMode]) {
+		if (typeof value === 'string' && Object.hasOwn(BACKGROUNDS, value)) return value as Background;
+	}
+	return data.blackBackground === true ? 'black' : DEFAULT_SETTINGS.background;
+}
+
+/** The background the terminal uses as #rrggbb, or "" for the theme's. */
 export function effectiveBackground(settings: MacTerminalSettings): string {
-	return settings.blackBackground ? '#000000' : settings.background;
+	return BACKGROUNDS[settings.background].color;
 }

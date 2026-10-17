@@ -11,12 +11,11 @@ import { ICON } from './icon';
 import type MacTerminalPlugin from './main';
 import { effectiveBackground } from './settings-data';
 import { normalizeFolderPath, realPathOutside, resolveVaultFolder, vaultFileFromObsidianUrl } from './paths';
-import { PtyError, PtySession, verifyHelper, type PtyExit } from './pty';
+import { PtyError, PtySession, prepareHelper, type PtyExit } from './pty';
 import { buildShellEnv, resolveShell, type ShellInfo } from './shell';
 import { TAG_COLORS, sanitizeTag, tagColorVar, type Tag, type TagColor } from './tag';
 import { TagModal } from './tag-modal';
 import { capCombiningMarks, checkLink, quoteFlavor, quoteForShell, sanitizeForDisplay, sanitizePaste } from './text';
-import { parseColor } from './color';
 import { readAppearance, readThemeColor } from './theme';
 
 export const VIEW_TYPE = 'mac-terminal';
@@ -85,7 +84,6 @@ export class TerminalView extends ItemView {
 	private startedAt = 0;
 	/** The user typed or pasted into this session (xterm's automatic replies don't count). */
 	private typed = false;
-	private gotOutput = false;
 	/** Characters handed to xterm but not drawn yet (flow control). */
 	private backlog = 0;
 	private paused = false;
@@ -205,14 +203,17 @@ export class TerminalView extends ItemView {
 
 	/** Re-reads settings and theme; called when either changes. */
 	applyAppearance(): void {
-		const front = this.front;
-		if (!front) return;
+		if (!this.front) return;
+		this.paintAppearance(this.front);
+		this.scheduleFit();
+	}
+
+	private paintAppearance(front: Frontend): void {
 		const look = readAppearance(this.contentEl, effectiveBackground(this.plugin.settings));
 		this.contentEl.setCssProps({ '--mac-terminal-background': look.background });
 		front.term.options.theme = look.theme;
 		front.term.options.fontFamily = look.fontFamily;
 		front.term.options.fontSize = this.plugin.settings.fontSize;
-		this.scheduleFit();
 	}
 
 	/** Ends the shell now (tab closed, plugin unloaded, app reloading). */
@@ -341,6 +342,9 @@ export class TerminalView extends ItemView {
 		// Hidden tabs have no size; xterm opens (and the shell starts) once visible.
 		if (this.hostEl.clientWidth < 10 || this.hostEl.clientHeight < 10) return;
 		if (!front.opened) {
+			// A new split can create the view before Obsidian puts it in the window,
+			// where theme colors can't be read yet: read them again now that it is there.
+			this.paintAppearance(front);
 			front.term.open(this.hostEl);
 			front.opened = true;
 		}
@@ -391,8 +395,6 @@ export class TerminalView extends ItemView {
 				cols: term.cols,
 				rows: term.rows,
 				accent: look.accent,
-				dark: look.dark,
-				background: parseColor(look.background) ?? { r: 0, g: 0, b: 0, a: 1 },
 				version: this.plugin.manifest.version,
 				vault: this.app.vault.getName(),
 				folder: this.folder || '/',
@@ -428,7 +430,7 @@ export class TerminalView extends ItemView {
 
 		let helper: string;
 		try {
-			helper = verifyHelper(this.plugin.pluginDir());
+			helper = prepareHelper();
 		} catch (error) {
 			this.fail(error instanceof PtyError ? error.message : String(error));
 			return;
@@ -462,7 +464,6 @@ export class TerminalView extends ItemView {
 		this.session = 'running';
 		this.startedAt = Date.now();
 		this.typed = false;
-		this.gotOutput = false;
 		this.markCarry = 0;
 		pty.onData((data) => this.output(data));
 		pty.onExit((exit) => this.onExit(pty, exit));
@@ -473,7 +474,6 @@ export class TerminalView extends ItemView {
 	private onExit(pty: PtySession, exit: PtyExit): void {
 		if (pty !== this.pty) return;
 		const lived = Date.now() - this.startedAt;
-		const gotOutput = this.gotOutput;
 		this.releasePty();
 		if (this.closing) return;
 		// Ending the shell yourself (`exit`, Ctrl+D) closes the tab whatever the code:
@@ -487,12 +487,6 @@ export class TerminalView extends ItemView {
 		const term = this.front?.term;
 		if (!term) return;
 		if (exit.message) term.write(`\r\n${RED}${sanitizeForDisplay(exit.message)}${RESET}`);
-		if (exit.signal === 'SIGKILL' && !gotOutput && lived < 3000) {
-			// What Gatekeeper does to a quarantined helper copied from a download.
-			const dir = quoteForShell(this.plugin.pluginDir(), 'posix');
-			term.write(`\r\n${RED}macOS stopped the terminal helper. If the plugin was copied from a download, ` +
-				(dir ? `run:${RESET}\r\n  xattr -dr com.apple.quarantine ${dir}` : `remove the quarantine attribute from its folder.${RESET}`));
-		}
 		const reason = exit.signal ? `ended by ${exit.signal}` : `exited with code ${exit.code}`;
 		term.write(`\r\n${DIM}[Process ${reason}]${RESET} Press Enter to restart, or ⌘W to close.\r\n`);
 	}
@@ -515,7 +509,6 @@ export class TerminalView extends ItemView {
 	private output(chunk: string): void {
 		const term = this.front?.term;
 		if (!term) return;
-		this.gotOutput = true;
 		const { text: data, carry } = capCombiningMarks(chunk, this.markCarry);
 		this.markCarry = carry;
 		this.backlog += data.length;
@@ -667,8 +660,15 @@ export class TerminalView extends ItemView {
 			item
 				.setTitle('Black background')
 				.setIcon('moon')
-				.setChecked(this.plugin.settings.blackBackground)
-				.onClick(() => void this.plugin.toggleBlackBackground()),
+				.setChecked(this.plugin.settings.background === 'black')
+				.onClick(() => void this.plugin.toggleBackground('black')),
+		);
+		menu.addItem((item) =>
+			item
+				.setTitle('White background')
+				.setIcon('sun')
+				.setChecked(this.plugin.settings.background === 'white')
+				.onClick(() => void this.plugin.toggleBackground('white')),
 		);
 		menu.showAtMouseEvent(evt);
 	}

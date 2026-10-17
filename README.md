@@ -2,7 +2,7 @@
 
 A real terminal inside Obsidian, already in the folder you are working in.
 
-Open your own login shell (zsh, bash, fish…) inside Obsidian with one click: it opens in a split right next to the note you are reading, already in that note's folder, with full colors, mouse support and full-screen apps like `vim`, `htop` or `claude`. Give each terminal the name of its project and a colored dot, switch to a black background, and choose whether terminals open side by side, stacked, in a tab or in their own window.
+Open your own login shell (zsh, bash, fish…) inside Obsidian with one click: it opens in a split right next to the note you are reading, already in that note's folder, with full colors, mouse support and full-screen apps like `vim`, `htop` or `claude`. Give each terminal the name of its project and a colored dot, pick a background from a small palette (black, white and a few calm colors), and choose whether terminals open side by side, stacked, in a tab or in their own window.
 
 **macOS only** (Apple silicon and Intel, macOS 11 or later).
 
@@ -13,7 +13,7 @@ Open your own login shell (zsh, bash, fish…) inside Obsidian with one click: i
 - **Opens where you work**: in a split next to your note (side by side or stacked, your choice), in the note's folder, the vault root, or any folder from the file explorer menu.
 - **Your real shell**: your login shell with your `PATH` and profile, the same one Terminal.app opens.
 - **Project names and colored dots** on terminal tabs, to find the right one at a glance.
-- **Looks like Obsidian**: colors and font follow your theme; optional black background; adjustable font size.
+- **Looks like Obsidian**: colors and font follow your theme, or pick black, white or one of a few other backgrounds, even with terminals already open; adjustable font size.
 - **Feels like a Mac terminal**: Option types characters as in any Mac app (so `@ # [ ] { }` work on an Italian keyboard), ⌘C, ⌘V, ⌘K and the other usual shortcuts work, ⌘-click opens links.
 - **Built carefully**: no native code inside Obsidian, a verified helper, and protections against hostile output, pastes and file names (see [Security](#security)).
 
@@ -37,7 +37,6 @@ Requirements: macOS 11 or later and Obsidian 1.7.2 or later.
            └── mac-terminal/
                ├── main.js
                ├── manifest.json
-               ├── mt-pty
                └── styles.css
    ```
 
@@ -45,15 +44,17 @@ Requirements: macOS 11 or later and Obsidian 1.7.2 or later.
 
    ![Mac Terminal enabled in Settings, Community plugins](docs/screenshots/install.png)
 
-6. Click the gem icon in the left ribbon, or run **Open terminal in current folder** from the command palette (⌘P).
+6. Click the octopus icon in the left ribbon, or run **Open terminal in current folder** from the command palette (⌘P).
 
 You can also do it all in Finder: the plugins folder is `.obsidian/plugins` inside your vault (press **⌘⇧.** to show hidden folders).
 
-**Updating:** copy the four new files into the existing `mac-terminal` folder, replacing the old ones, then reload Obsidian (⌘P → *Reload app without saving*). Don't replace the whole folder: it also holds your settings (`data.json`).
+**Updating:** copy the three new files into the existing `mac-terminal` folder, replacing the old ones, then reload Obsidian (⌘P → *Reload app without saving*). Don't replace the whole folder: it also holds your settings (`data.json`).
 
 **Uninstalling:** disable the plugin, then delete the `mac-terminal` folder.
 
-**About macOS security:** `mt-pty`, the small helper that runs the terminal, is not notarized by Apple. You don't need to change any security setting: the plugin checks the helper against the fingerprint (SHA-256) built into `main.js` and runs its own verified copy. If you open `mt-pty` yourself from Finder, macOS says it can't verify it; that is expected and harmless.
+**Several Macs:** the whole plugin is these three files, so Obsidian Sync (with community plugins turned on in its settings) brings it to your other Macs by itself.
+
+**About macOS security:** the small helper program that runs the terminal, `mt-pty`, travels inside `main.js`. When you open a terminal, the plugin checks it against its fingerprint (SHA-256), writes it to a private folder in the macOS temporary directory and runs it from there. You don't need to change any security setting.
 
 ### From source
 
@@ -71,18 +72,18 @@ Then, in Obsidian: **Settings → Community plugins**, turn community plugins on
 
 `install-plugin` keeps your settings when you update. Without `--enable` it only copies the files, and you enable the plugin yourself. `npm run package` builds the zip for the Releases page into `dist/`.
 
-The plugin can't come from the Obsidian community directory, because that directory only distributes JavaScript and the terminal needs its native helper.
+The plugin isn't in the Obsidian community directory, so you install it by hand.
 
 ## Opening a terminal
 
 | How | Where it opens |
 | --- | --- |
-| Ribbon icon (the gem with a prompt) | Folder of the active note |
+| Ribbon icon (the ninja octopus) | Folder of the active note |
 | Command palette → **Open terminal in current folder** | Folder of the active note (or of the active terminal) |
 | Command palette → **Open terminal in vault root** | Vault root |
 | Right-click a folder or a note → **Open in terminal** | That folder, or the note's folder |
 
-Other commands: **Set name and color of this terminal** and **Toggle black background**.
+Other commands: **Set name and color of this terminal**, **Toggle black background** and **Toggle white background**.
 
 ![The "Open in terminal" entry in the file explorer menu](docs/screenshots/menu.png)
 
@@ -105,8 +106,7 @@ A new terminal opened from a named one (with **Open terminal in current folder**
 ![Plugin settings](docs/screenshots/settings.png)
 
 - **Font size**: 8 to 32 px.
-- **Black background**: pure black, like a classic terminal. Turn it off and the color below comes back. Also in the terminal's right-click menu and in the command palette.
-- **Background color**: follows the Obsidian theme by default, or pick any color. The text color adapts to stay readable.
+- **Background**: one dot per background: the Obsidian theme's (the default), black, graphite, midnight blue, deep teal, plum, paper and white. Open terminals change right away, startup art included, and the text color adapts to stay readable. Black and white are also in the terminal's right-click menu and in the command palette.
 - **Startup art**: the nestedshell ninja octopus and the folder info shown when a terminal opens (a compact one-liner in narrow panes).
 - **Open terminals in**: split to the right (side by side, the default), split below (stacked), new tab, or new window.
 
@@ -131,7 +131,7 @@ While the terminal has focus, keys go to the shell, including Esc, Ctrl+C, Ctrl+
 | ⌘-click a link | Open it in the browser (http and https only) |
 | ⌥-drag | Select text even when an app captures the mouse |
 
-Right-click opens a menu with Copy, Paste, Select all, Clear, Name and color, and Black background. Dropping files from Finder, or notes from the Obsidian file explorer, types their quoted paths.
+Right-click opens a menu with Copy, Paste, Select all, Clear, Name and color, Black background and White background. Dropping files from Finder, or notes from the Obsidian file explorer, types their quoted paths.
 
 Typing `exit` (or Ctrl+D) closes the tab. If the shell is killed or ends on its own, the tab stays open with the reason; press Enter to start a new shell in the same folder.
 
@@ -145,7 +145,7 @@ Obsidian tab ── xterm.js (renders the terminal)
 ```
 
 - **xterm.js** draws the terminal inside the Obsidian view, themed from Obsidian's CSS variables. The cursor doesn't blink, as in Terminal.app: a blinking cursor keeps the CPU busy and costs battery.
-- **mt-pty** (`native/mt-pty.c`, about 400 lines of C) owns the pseudo-terminal. The plugin starts it as a plain child process, so no native code runs inside Obsidian. Native terminal modules such as node-pty crash the whole app on *Reload app*; a separate helper can't.
+- **mt-pty** (`native/mt-pty.c`, about 400 lines of C) owns the pseudo-terminal. It is built into `main.js`; the plugin writes it to a private temporary folder and starts it as a plain child process, so no native code runs inside Obsidian. Native terminal modules such as node-pty crash the whole app on *Reload app*; a separate helper can't.
 - The shell is your account's login shell (the same one Terminal.app opens), started with `-l` so your `PATH` and profile are loaded even when Obsidian was launched from the Dock.
 
 ## Security
@@ -153,7 +153,7 @@ Obsidian tab ── xterm.js (renders the terminal)
 - **No shell in between.** The plugin runs your shell directly with an argument list; folder names are never put into a command line.
 - **Stays in the vault.** The folder stored in the workspace is resolved inside the vault; anything that points outside falls back to the vault root. A folder that is a symbolic link to somewhere else still opens (linking a project into the vault is common), but the terminal shows where it really is before the shell starts.
 - **No shell starts by itself.** Only a terminal you open starts its shell right away. A tab restored from the saved workspace, a file a synced or shared vault could alter, waits for Enter.
-- **Verified helper.** The SHA-256 of `mt-pty` is built into `main.js` and checked before every use. The checked bytes are copied to a private folder in the macOS temporary directory and run from there, so nothing can swap the file between the check and the start. A modified, swapped or linked helper is refused.
+- **Verified helper.** `mt-pty` travels inside `main.js` together with its SHA-256. Before every start the plugin checks the bytes, writes them to a folder in the macOS temporary directory that only your user can write to, and checks that copy again, so a modified, swapped or linked file is replaced, never run.
 - **Nothing leaks into the shell.** The helper closes every inherited file descriptor, so the shell can't reach Obsidian's sockets or files. Variables left by other terminals (iTerm, VS Code, tmux) and by Obsidian's own process (Electron, bundle id, allocator settings) are removed.
 - **Safe paste.** Pasted and dropped text is stripped of escape and control characters before it reaches the shell, so clipboard content can't break out of bracketed paste and run commands.
 - **Exact paths.** Dropped files are quoted for your shell (zsh and bash, fish, tcsh, elvish, nushell). Names with control or invisible bidi characters are refused, never silently altered.
@@ -183,12 +183,12 @@ npm run package    # build and zip the plugin folder into dist/mac-terminal-<ver
 | `src/main.ts` | Plugin entry: commands, ribbon, file menu, settings |
 | `src/terminal-view.ts` | The terminal tab: xterm.js, keyboard, clipboard, lifecycle |
 | `src/pty.ts` | Starts and talks to the helper |
-| `native/mt-pty.c` | The pseudo-terminal helper |
+| `native/mt-pty.c` | The pseudo-terminal helper (the build puts it inside `main.js`) |
 | `src/shell.ts`, `src/paths.ts`, `src/text.ts` | Shell and environment, vault paths, sanitizing and quoting |
 | `src/banner.ts`, `src/theme.ts`, `src/icon.ts` | Startup art, colors, icon |
 | `src/tag.ts`, `src/tag-modal.ts` | Name and color of a terminal |
 | `src/guards.ts` | Limits on escape sequences that would freeze the terminal |
-| `scripts/build.mjs`, `scripts/install.mjs`, `scripts/package.mjs` | Build into `dist/mac-terminal`, install into a vault, zip for release |
+| `scripts/build.mjs`, `scripts/install.mjs`, `scripts/package.mjs` | Build into `dist/mac-terminal`, install into a vault, zip for release (`scripts/plugin-files.mjs` lists the files) |
 
 The build also patches one line of xterm.js: it detects Node.js-like environments and then ignores the Mac, which would turn Option into Meta. The build stops if a future xterm version changes that line.
 
@@ -196,7 +196,6 @@ The build also patches one line of xterm.js: it detects Node.js-like environment
 
 - After *Reload app*, the helper processes of terminals that were open remain as inactive "zombie" entries (no CPU, no memory) until Obsidian quits. Their shells have already been closed.
 - Obsidian uses native macOS menus by default; the right-click menu of the terminal follows that setting.
-- Obsidian Sync doesn't sync `mt-pty` (it syncs only `main.js`, `manifest.json`, `styles.css` and `data.json`). On each Mac, copy the plugin folder yourself; if the helper is missing, the terminal says so.
 
 ## License
 

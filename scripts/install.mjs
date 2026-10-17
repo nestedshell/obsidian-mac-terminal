@@ -6,13 +6,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { OBSOLETE, SHIPPED } from './plugin-files.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 const dist = path.join(root, 'dist', manifest.id);
-const SHIPPED = ['main.js', 'manifest.json', 'styles.css', 'mt-pty'];
-/** Left over by early builds that used node-pty. */
-const OBSOLETE = ['node-pty'];
 
 const args = process.argv.slice(2);
 const enable = args.includes('--enable');
@@ -86,7 +84,6 @@ for (const file of OBSOLETE) {
 	if (fs.existsSync(target) || isLink(target)) fs.rmSync(target, { recursive: true, force: true });
 }
 for (const file of SHIPPED) fs.copyFileSync(path.join(dist, file), path.join(dest, file));
-fs.chmodSync(path.join(dest, 'mt-pty'), 0o755);
 
 function isLink(p) {
 	try {

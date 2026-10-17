@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { ART_WIDTH, renderBanner, renderOctopus, WIDE_LAYOUT_MIN_COLS } from '../src/banner';
-import { contrast, isHexColor, parseColor, toCss, toHex, BLACK, WHITE } from '../src/color';
+import { contrast, isDark, isHexColor, parseColor, toCss, toHex, BLACK, WHITE } from '../src/color';
 import { cleanFontFamily } from '../src/theme';
-import { DEFAULT_SETTINGS, FONT_SIZE_MAX, FONT_SIZE_MIN, effectiveBackground, sanitizeSettings } from '../src/settings-data';
+import { BACKGROUNDS, DEFAULT_SETTINGS, FONT_SIZE_MAX, FONT_SIZE_MIN, effectiveBackground, sanitizeSettings } from '../src/settings-data';
 import { displayWidth, stripAnsi } from '../src/text';
 
 const accent = { r: 138, g: 92, b: 245, a: 1 };
@@ -10,8 +10,6 @@ const info = (cols: number, extra: Partial<Parameters<typeof renderBanner>[0]> =
 	cols,
 	rows: 40,
 	accent,
-	dark: true,
-	background: { r: 30, g: 30, b: 30, a: 1 },
 	version: '1.0.0',
 	vault: 'Second Brain',
 	folder: 'Progetti/Idee nuove',
@@ -88,16 +86,18 @@ describe('renderBanner', () => {
 		for (const seq of sequences) expect(seq.endsWith('m')).toBe(true);
 	});
 	it('draws the octopus as a block of whole cells', () => {
-		for (const dark of [true, false]) {
-			const rows = renderOctopus({ r: 0, g: 0, b: 0, a: 1 }, dark).map(stripAnsi);
-			expect(rows).toHaveLength(12);
-			for (const row of rows) expect(displayWidth(row)).toBe(ART_WIDTH);
-		}
+		const rows = renderOctopus().map(stripAnsi);
+		expect(rows).toHaveLength(12);
+		for (const row of rows) expect(displayWidth(row)).toBe(ART_WIDTH);
 	});
-	it('keeps the black ninja visible on a black background', () => {
-		const art = renderOctopus({ r: 0, g: 0, b: 0, a: 1 }, true).join('');
-		expect(art).not.toContain('\u001b[48;2;0;0;0m');
-		expect(renderOctopus({ r: 255, g: 255, b: 255, a: 1 }, false).join('')).toContain('\u001b[48;2;22;22;22m');
+	it('draws a ninja that reads on black and on white, so switching the background keeps it right', () => {
+		// The body is the colour that fills most cells.
+		const counts = new Map<string, number>();
+		for (const m of renderOctopus().join('').matchAll(/\u001b\[48;2;(\d+);(\d+);(\d+)m/g)) counts.set(m.slice(1).join(','), (counts.get(m.slice(1).join(',')) ?? 0) + 1);
+		const [r, g, b] = [...counts.entries()].sort((x, y) => y[1] - x[1])[0][0].split(',').map(Number);
+		const body = { r, g, b, a: 1 };
+		expect(contrast(body, BLACK)).toBeGreaterThan(1.8);
+		expect(contrast(body, WHITE)).toBeGreaterThan(7);
 	});
 });
 
@@ -140,20 +140,36 @@ describe('sanitizeSettings', () => {
 		expect(sanitizeSettings({ fontSize: 2 }).fontSize).toBe(FONT_SIZE_MIN);
 		expect(sanitizeSettings({ fontSize: 999 }).fontSize).toBe(FONT_SIZE_MAX);
 		expect(sanitizeSettings({ fontSize: Infinity }).fontSize).toBe(DEFAULT_SETTINGS.fontSize);
-		expect(sanitizeSettings({ fontSize: 15.6, background: '#ABCDEF', showBanner: false, openLocation: 'window' })).toEqual({
+		expect(sanitizeSettings({ fontSize: 15.6, background: 'plum', showBanner: false, openLocation: 'window' })).toEqual({
 			fontSize: 16,
-			background: '#abcdef',
-			blackBackground: false,
+			background: 'plum',
 			showBanner: false,
 			openLocation: 'window',
 		});
 	});
-	it('switches to black and back to the chosen color', () => {
-		expect(sanitizeSettings({ blackBackground: 'yes' }).blackBackground).toBe(false);
-		const custom = sanitizeSettings({ background: '#1e1e2e', blackBackground: true });
-		expect(effectiveBackground(custom)).toBe('#000000');
-		expect(effectiveBackground({ ...custom, blackBackground: false })).toBe('#1e1e2e');
-		expect(effectiveBackground(sanitizeSettings({ blackBackground: false }))).toBe('');
+	it('offers only the colors of the palette', () => {
+		expect(effectiveBackground(sanitizeSettings({ background: 'black' }))).toBe('#000000');
+		expect(effectiveBackground(sanitizeSettings({ background: 'white' }))).toBe('#ffffff');
+		expect(effectiveBackground(sanitizeSettings({ background: 'theme' }))).toBe('');
+		for (const bad of ['#abcdef', 'toString', '__proto__', 'Black', null]) expect(sanitizeSettings({ background: bad }).background).toBe('theme');
+		for (const { color } of Object.values(BACKGROUNDS)) expect(color === '' || isHexColor(color)).toBe(true);
+	});
+	it('keeps the octopus and the text readable on every color of the palette', () => {
+		const body = { r: 64, g: 64, b: 64, a: 1 };
+		for (const { name, color } of Object.values(BACKGROUNDS)) {
+			const bg = parseColor(color);
+			if (!bg) continue;
+			// Dark backgrounds get light text, light ones dark text (see theme.ts).
+			const text = isDark(bg) ? WHITE : BLACK;
+			expect(contrast(text, bg), name).toBeGreaterThan(7);
+			expect(contrast(body, bg), name).toBeGreaterThan(1.4);
+		}
+	});
+	it('reads settings saved by earlier builds', () => {
+		expect(sanitizeSettings({ blackBackground: true, background: '#1e1e2e' }).background).toBe('black');
+		expect(sanitizeSettings({ blackBackground: false, background: '#1e1e2e' }).background).toBe('theme');
+		expect(sanitizeSettings({ backgroundMode: 'white' }).background).toBe('white');
+		expect(sanitizeSettings({ blackBackground: 'yes' }).background).toBe('theme');
 	});
 	it('drops unknown keys', () => {
 		expect(sanitizeSettings({ shell: '/tmp/evil', __proto__: { polluted: true } })).toEqual(DEFAULT_SETTINGS);

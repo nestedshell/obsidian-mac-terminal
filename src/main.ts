@@ -1,7 +1,5 @@
-import { addIcon, FileSystemAdapter, Notice, Platform, Plugin, TFile, TFolder, View, type SplitDirection, type TAbstractFile, type WorkspaceLeaf } from 'obsidian';
+import { addIcon, Notice, Platform, Plugin, TFile, TFolder, View, type SplitDirection, type TAbstractFile, type WorkspaceLeaf } from 'obsidian';
 import { randomUUID } from 'crypto';
-import * as path from 'path';
-import { toHex, parseColor } from './color';
 import { DEFAULT_SETTINGS, sanitizeSettings, type MacTerminalSettings } from './settings-data';
 import { MacTerminalSettingTab } from './settings';
 import { ICON, ICON_SVG } from './icon';
@@ -52,7 +50,12 @@ export default class MacTerminalPlugin extends Plugin {
 		this.addCommand({
 			id: 'toggle-black-background',
 			name: 'Toggle black background',
-			callback: () => this.toggleBlackBackground(),
+			callback: () => this.toggleBackground('black'),
+		});
+		this.addCommand({
+			id: 'toggle-white-background',
+			name: 'Toggle white background',
+			callback: () => this.toggleBackground('white'),
 		});
 
 		this.registerEvent(
@@ -90,25 +93,9 @@ export default class MacTerminalPlugin extends Plugin {
 		this.refreshViews();
 	}
 
-	async toggleBlackBackground(): Promise<void> {
-		await this.updateSettings({ blackBackground: !this.settings.blackBackground });
-	}
-
-	/** Absolute path of this plugin's folder, where the mt-pty helper lives. */
-	pluginDir(): string {
-		const adapter = this.app.vault.adapter;
-		if (!(adapter instanceof FileSystemAdapter)) throw new Error('This vault is not on the local file system.');
-		const dir = this.manifest.dir ?? path.join(this.app.vault.configDir, 'plugins', this.manifest.id);
-		return path.join(adapter.getBasePath(), dir);
-	}
-
-	/** The theme's background colour, shown by the colour picker when no custom colour is set. */
-	themeBackground(): string {
-		const probe = document.body.createDiv({ cls: 'mac-terminal-probe' });
-		probe.setCssProps({ color: 'var(--background-primary, #ffffff)' });
-		const color = parseColor(getComputedStyle(probe).color);
-		probe.remove();
-		return color ? toHex(color) : '#ffffff';
+	/** Black or white for every terminal, or back to the theme background. */
+	async toggleBackground(mode: 'black' | 'white'): Promise<void> {
+		await this.updateSettings({ background: this.settings.background === mode ? 'theme' : mode });
 	}
 
 	/** True once for a token issued by openTerminal in this session. */

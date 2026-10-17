@@ -26,7 +26,7 @@ const vault = () => {
 };
 
 beforeAll(() => {
-	if (!fs.existsSync(path.join(dist, 'mt-pty'))) execFileSync(process.execPath, [path.join(root, 'scripts', 'build.mjs')], { stdio: 'ignore' });
+	if (!fs.existsSync(path.join(dist, 'main.js'))) execFileSync(process.execPath, [path.join(root, 'scripts', 'build.mjs')], { stdio: 'ignore' });
 }, 120000);
 
 afterEach(() => {
@@ -42,13 +42,12 @@ describe('install-plugin', () => {
 		fs.writeFileSync(path.join(dest, 'data.json'), '{"fontSize":20}');
 		fs.writeFileSync(path.join(dest, 'notes.txt'), 'mine');
 		fs.mkdirSync(path.join(dest, 'node-pty'));
+		fs.writeFileSync(path.join(dest, 'mt-pty'), 'old helper');
 		const r = run(v, '--enable');
 		expect(r.ok).toBe(true);
-		for (const f of ['main.js', 'manifest.json', 'styles.css', 'mt-pty']) expect(fs.existsSync(path.join(dest, f))).toBe(true);
+		expect(fs.readdirSync(dest).sort()).toEqual(['data.json', 'main.js', 'manifest.json', 'notes.txt', 'styles.css']);
 		expect(fs.readFileSync(path.join(dest, 'data.json'), 'utf8')).toBe('{"fontSize":20}');
 		expect(fs.readFileSync(path.join(dest, 'notes.txt'), 'utf8')).toBe('mine');
-		expect(fs.existsSync(path.join(dest, 'node-pty'))).toBe(false);
-		expect(fs.statSync(path.join(dest, 'mt-pty')).mode & 0o777).toBe(0o755);
 		expect(JSON.parse(fs.readFileSync(path.join(v, '.obsidian', 'community-plugins.json'), 'utf8'))).toContain('mac-terminal');
 	});
 

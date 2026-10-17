@@ -1,12 +1,13 @@
 // Builds the plugin into dist/mac-terminal/:
-//   main.js       the bundled plugin (xterm.js included)
+//   main.js       the bundled plugin (xterm.js included), with the mt-pty helper inside
 //   styles.css    xterm.css + src/styles.css
 //   manifest.json
-//   mt-pty        the pseudo-terminal helper (native/mt-pty.c), universal binary
-// The SHA-256 of mt-pty is baked into main.js and checked before every use.
+// mt-pty (native/mt-pty.c, a universal binary) goes into main.js together with its
+// SHA-256, so the plugin is three files that Obsidian Sync can carry.
 import { createHash } from 'node:crypto';
 import { builtinModules } from 'node:module';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import esbuild from 'esbuild';
@@ -47,10 +48,19 @@ const xtermPlatformFix = {
 	},
 };
 
+function buildHelper() {
+	const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-pty-build-'));
+	try {
+		return fs.readFileSync(compileHelper(path.join(temp, 'mt-pty')));
+	} finally {
+		fs.rmSync(temp, { recursive: true, force: true });
+	}
+}
+
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
-const helper = compileHelper(path.join(out, 'mt-pty'));
-const helperHash = createHash('sha256').update(fs.readFileSync(helper)).digest('hex');
+const helper = buildHelper();
+const helperHash = createHash('sha256').update(helper).digest('hex');
 writeStatic();
 
 const context = await esbuild.context({
@@ -61,7 +71,7 @@ const context = await esbuild.context({
 	platform: 'browser',
 	target: 'es2022',
 	external: ['obsidian', 'electron', '@codemirror/*', '@lezer/*', ...builtinModules, ...builtinModules.map((m) => `node:${m}`)],
-	define: { MT_PTY_SHA256: JSON.stringify(helperHash) },
+	define: { MT_PTY_SHA256: JSON.stringify(helperHash), MT_PTY_BASE64: JSON.stringify(helper.toString('base64')) },
 	banner: { js: `/* ${manifest.name} ${manifest.version}, bundled with xterm.js (MIT). Source: src/ */` },
 	logLevel: 'info',
 	treeShaking: true,
@@ -76,5 +86,5 @@ if (watch) {
 } else {
 	await context.rebuild();
 	await context.dispose();
-	console.log(`Built ${path.relative(root, out)} (mt-pty sha256 ${helperHash.slice(0, 12)}…)`);
+	console.log(`Built ${path.relative(root, out)} (mt-pty ${Math.round(helper.length / 1024)} KB inside main.js, sha256 ${helperHash.slice(0, 12)}…)`);
 }

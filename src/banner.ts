@@ -1,15 +1,15 @@
 // The startup art: the nestedshell ninja octopus, drawn with coloured cells, next
 // to a short info panel. Pure function, no DOM.
-import { BLACK, WHITE, mix, type Rgb } from './color';
+// No colour here depends on the terminal background: the background can change
+// while the art is on screen (black, white, theme), and the art must still look right.
+import type { Rgb } from './color';
 import { displayWidth, sanitizeForDisplay, stripAnsi, truncateToWidth } from './text';
 
 export interface BannerInfo {
 	cols: number;
 	rows: number;
+	/** Obsidian's accent colour: made to read on light and dark themes alike. */
 	accent: Rgb;
-	dark: boolean;
-	/** Terminal background, so the octopus stays visible on dark themes. */
-	background: Rgb;
 	version: string;
 	vault: string;
 	folder: string;
@@ -51,6 +51,9 @@ export const ART_WIDTH = OCTOPUS[0].length;
 const FACE = rgb(246, 212, 178);
 const EYE = rgb(250, 250, 250);
 const INK = rgb(18, 18, 18);
+/** Charcoal: reads as a black ninja on white, and stands out on black. */
+const BODY = rgb(64, 64, 64);
+const SUCKER = rgb(150, 150, 150);
 
 const MARGIN = '  ';
 const GAP = '   ';
@@ -63,19 +66,16 @@ export const WIDE_LAYOUT_MIN_COLS = 64;
 /**
  * Draws the octopus with coloured spaces (and a few glyphs for eyes and suckers):
  * background colours fill whole cells, so the art stays crisp whatever the font.
- * The ninja is black; on a dark background it turns charcoal so it stays visible.
  */
-export function renderOctopus(background: Rgb, dark: boolean): string[] {
-	const body = dark ? mix(background, WHITE, 0.22) : rgb(22, 22, 22);
-	const sucker = dark ? mix(body, WHITE, 0.5) : rgb(140, 140, 140);
+export function renderOctopus(): string[] {
 	const cells: Record<string, string> = {
-		K: `${bg(body)} `,
+		K: `${bg(BODY)} `,
 		F: `${bg(FACE)} `,
 		W: `${bg(EYE)} `,
 		p: `${bg(EYE)}${fg(INK)}●`,
 		'<': `${bg(EYE)}${fg(INK)}◥`,
 		'>': `${bg(EYE)}${fg(INK)}◤`,
-		o: `${bg(body)}${fg(sucker)}•`,
+		o: `${bg(BODY)}${fg(SUCKER)}•`,
 	};
 	return OCTOPUS.map((line) => Array.from(line, (k) => (cells[k] ? cells[k] + RESET : ' ')).join(''));
 }
@@ -88,7 +88,7 @@ interface Panel {
 }
 
 function infoPanel(info: BannerInfo, width: number): Panel {
-	const accentText = fg(info.dark ? mix(info.accent, WHITE, 0.25) : mix(info.accent, BLACK, 0.15));
+	const accentText = fg(info.accent);
 	const label = (name: string) => `${accentText}${BOLD}${name.padEnd(LABEL_WIDTH)}${RESET}`;
 	const value = (text: string, keepEnd = false) => truncateToWidth(sanitizeForDisplay(text), Math.max(1, width - LABEL_WIDTH), keepEnd);
 	const name = 'mac-terminal';
@@ -132,7 +132,7 @@ export function renderBanner(info: BannerInfo): string {
 	let lines: string[];
 
 	if (cols >= WIDE_LAYOUT_MIN_COLS && info.rows >= 14) {
-		const art = renderOctopus(info.background, info.dark);
+		const art = renderOctopus();
 		const panelWidth = cols - MARGIN.length - ART_WIDTH - GAP.length - 1;
 		const panel = infoPanel(info, Math.min(panelWidth, 48)).lines;
 		const offset = Math.max(0, Math.floor((art.length - panel.length) / 2));
