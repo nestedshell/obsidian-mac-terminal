@@ -1,4 +1,4 @@
-/* Mac Terminal: layout of the terminal view. xterm.css is prepended at build time. */
+/* Embedded Mac Terminal: layout of the terminal view. xterm.css is prepended at build time. */
 
 .workspace-leaf-content[data-type="mac-terminal"] .view-content.mac-terminal-view {
 	padding: 0;

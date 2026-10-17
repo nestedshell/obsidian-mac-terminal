@@ -1,7 +1,7 @@
 {
   "name": "mac-terminal",
   "version": "1.0.0",
-  "description": "Obsidian plugin for macOS: open a real terminal inside Obsidian, already in the current folder.",
+  "description": "Embedded Mac Terminal, an Obsidian plugin for macOS: open a real terminal inside Obsidian, already in the current folder.",
   "private": true,
   "license": "MIT",
   "author": "nestedshell",

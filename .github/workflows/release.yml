@@ -3,7 +3,7 @@
 # The tag must equal the version in manifest.json (the Obsidian community directory
 # downloads main.js, manifest.json and styles.css from the release with that tag).
 # The files are built here from the tagged source and get a build provenance
-# attestation: gh attestation verify main.js --repo nestedshell/mac-terminal
+# attestation: gh attestation verify main.js --repo nestedshell/obsidian-mac-terminal
 name: Release
 
 on:

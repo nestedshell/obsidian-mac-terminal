@@ -98,7 +98,7 @@ export class MacTerminalSettingTab extends PluginSettingTab {
 	/** One dot per background, as in the Name and color dialog; hovering shows the name. */
 	private renderBackground(setting: Setting): void {
 		setting.settingEl.addClass('mac-terminal-background-setting');
-		const group =setting.controlEl.createDiv({ cls: 'mac-terminal-swatches', attr: { role: 'radiogroup', 'aria-label': TEXT.background[0] } });
+		const group = setting.controlEl.createDiv({ cls: 'mac-terminal-swatches', attr: { role: 'radiogroup', 'aria-label': TEXT.background[0] } });
 		const ids = Object.keys(BACKGROUNDS) as Background[];
 		const swatches = ids.map((id) => {
 			const { name, color } = BACKGROUNDS[id];

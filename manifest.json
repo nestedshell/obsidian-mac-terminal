@@ -1,6 +1,6 @@
 {
 	"id": "mac-terminal",
-	"name": "Mac Terminal",
+	"name": "Embedded Mac Terminal",
 	"version": "1.0.0",
 	"minAppVersion": "1.7.2",
 	"description": "Open a real terminal next to your note, already in its folder. macOS only.",

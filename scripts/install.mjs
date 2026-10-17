@@ -105,4 +105,4 @@ if (enabledList) {
 console.log(`✓ ${manifest.name} ${manifest.version} installed in ${dest}`);
 console.log(enable
 	? '  Enabled. If Obsidian is open on this vault, reload it (⌘P → "Reload app without saving").'
-	: '  Turn it on in Obsidian: Settings → Community plugins → Mac Terminal.');
+	: `  Turn it on in Obsidian: Settings → Community plugins → ${manifest.name}.`);

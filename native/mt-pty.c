@@ -1,5 +1,5 @@
 /*
- * mt-pty: pseudo-terminal helper for the Mac Terminal Obsidian plugin.
+ * mt-pty: pseudo-terminal helper for the Embedded Mac Terminal Obsidian plugin.
  *
  * Usage: mt-pty <cols> <rows> <program> [args...]
  *
