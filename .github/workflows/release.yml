@@ -1,0 +1,46 @@
+# Publishes a release when a version tag is pushed:
+#   git tag 1.0.1 && git push origin 1.0.1
+# The tag must equal the version in manifest.json (the Obsidian community directory
+# downloads main.js, manifest.json and styles.css from the release with that tag).
+# The files are built here from the tagged source and get a build provenance
+# attestation: gh attestation verify main.js --repo nestedshell/mac-terminal
+name: Release
+
+on:
+  push:
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Tag matches manifest.json
+        run: test "$(node -p 'require("./manifest.json").version')" = "$GITHUB_REF_NAME"
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run package
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: |
+            dist/mac-terminal/main.js
+            dist/mac-terminal/manifest.json
+            dist/mac-terminal/styles.css
+            dist/mac-terminal-${{ github.ref_name }}.zip
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --generate-notes
+          dist/mac-terminal/main.js dist/mac-terminal/manifest.json dist/mac-terminal/styles.css
+          "dist/mac-terminal-$GITHUB_REF_NAME.zip"

@@ -18,7 +18,7 @@ export default class MacTerminalPlugin extends Plugin {
 
 	async onload(): Promise<void> {
 		if (!Platform.isMacOS || !Platform.isDesktopApp) {
-			new Notice('Mac Terminal works only in Obsidian for macOS.');
+			new Notice('This terminal plugin works only in Obsidian for macOS.');
 			return;
 		}
 		await this.loadSettings();

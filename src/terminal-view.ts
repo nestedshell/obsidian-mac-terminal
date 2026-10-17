@@ -495,7 +495,7 @@ export class TerminalView extends ItemView {
 		this.session = 'failed';
 		this.startRequested = false;
 		this.front?.term.write(`\r\n${RED}${sanitizeForDisplay(message)}${RESET}\r\n${DIM}Press Enter to try again.${RESET}\r\n`);
-		new Notice(`Mac Terminal: ${message}`, 10000);
+		new Notice(`Terminal: ${message}`, 10000);
 	}
 
 	private releasePty(): void {
@@ -531,7 +531,7 @@ export class TerminalView extends ItemView {
 		if (this.session === 'running' && this.pty) {
 			if (!this.pty.write(data) && Date.now() - this.droppedInputAt > 10000) {
 				this.droppedInputAt = Date.now();
-				new Notice('Mac Terminal: the program is not reading input, so typing is being dropped.');
+				new Notice('Terminal: the program is not reading input, so typing is being dropped.');
 			}
 			return;
 		}
@@ -616,7 +616,7 @@ export class TerminalView extends ItemView {
 		if (!text) return;
 		this.clipboard()
 			.writeText(text)
-			.catch(() => new Notice('Mac Terminal: could not copy to the clipboard.'));
+			.catch(() => new Notice('Terminal: could not copy to the clipboard.'));
 	}
 
 	private pasteText(text: string): void {
@@ -649,7 +649,7 @@ export class TerminalView extends ItemView {
 					this.clipboard()
 						.readText()
 						.then((text) => this.pasteText(text))
-						.catch(() => new Notice('Mac Terminal: could not read the clipboard.'));
+						.catch(() => new Notice('Terminal: could not read the clipboard.'));
 				}),
 		);
 		menu.addItem((item) => item.setTitle('Select all').setIcon('text-select').onClick(() => term.selectAll()));
@@ -707,7 +707,7 @@ export class TerminalView extends ItemView {
 
 		const flavor = quoteFlavor((this.shell ??= resolveShell()).name);
 		const quoted = paths.map((p) => quoteForShell(p, flavor));
-		if (quoted.some((q) => q === null)) new Notice('Mac Terminal: skipped a file name with invisible or control characters.');
+		if (quoted.some((q) => q === null)) new Notice('Terminal: skipped a file name with invisible or control characters.');
 		const words = quoted.filter((q): q is string => q !== null);
 		if (words.length > 0) this.pasteText(words.join(' ') + ' ');
 		this.focus();
@@ -736,7 +736,7 @@ export class TerminalView extends ItemView {
 		if (!event.metaKey) return;
 		const link = checkLink(uri);
 		if (link.open) window.open(link.href);
-		else new Notice(`Mac Terminal: ${link.label}`);
+		else new Notice(`Terminal: ${link.label}`);
 	}
 
 	// ── Name and colour dot ──────────────────────────────────────────────────

@@ -5,15 +5,14 @@
   "private": true,
   "license": "MIT",
   "author": "nestedshell",
-  "os": [
-    "darwin"
-  ],
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "build": "node scripts/build.mjs",
     "dev": "node scripts/build.mjs --watch",
+    "build:helper": "node scripts/helper.mjs",
+    "check:helper": "node scripts/helper.mjs --check",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check": "npm run typecheck && npm run test && npm run build",

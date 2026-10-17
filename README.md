@@ -58,7 +58,7 @@ You can also do it all in Finder: the plugins folder is `.obsidian/plugins` insi
 
 ### From source
 
-Also needs Node.js 20 or later and the Xcode Command Line Tools (`xcode-select --install`), which compile the helper.
+Also needs Node.js 20 or later. The build embeds the compiled helper kept in the repository (`native/mt-pty`), so it needs no compiler; see [Development](#development) to compile it yourself.
 
 ```sh
 git clone https://github.com/nestedshell/mac-terminal.git
@@ -148,6 +148,13 @@ Obsidian tab ── xterm.js (renders the terminal)
 - **mt-pty** (`native/mt-pty.c`, about 400 lines of C) owns the pseudo-terminal. It is built into `main.js`; the plugin writes it to a private temporary folder and starts it as a plain child process, so no native code runs inside Obsidian. Native terminal modules such as node-pty crash the whole app on *Reload app*; a separate helper can't.
 - The shell is your account's login shell (the same one Terminal.app opens), started with `-l` so your `PATH` and profile are loaded even when Obsidian was launched from the Dock.
 
+## What the plugin accesses
+
+- **Runs programs.** It starts your login shell, and what you type runs with your user's permissions, as in Terminal.app.
+- **Files outside the vault.** A terminal is not limited to the vault: you can `cd` anywhere, and the commands you run can read and change any file your account can. The plugin itself writes only its settings (`data.json`) and the copy of its helper, in a private folder of the macOS temporary directory (`$TMPDIR/mac-terminal-<user id>/`). To start the shell the way Terminal.app does, it also looks up your account's shell and the installed locales.
+- **No network, no accounts, no telemetry.** The plugin makes no network requests. Links you ⌘-click open in your browser.
+- **All open source, helper included.** The long base64 string in `main.js` is `native/mt-pty`, compiled from `native/mt-pty.c` in this repository. `npm run build` gives the same `main.js`, byte for byte, on macOS and Linux, and every release is built by GitHub Actions from its tag, with a build provenance attestation (`gh attestation verify main.js --repo nestedshell/mac-terminal`).
+
 ## Security
 
 - **No shell in between.** The plugin runs your shell directly with an argument list; folder names are never put into a command line.
@@ -172,23 +179,31 @@ The plugin doesn't modify Obsidian or its libraries and patches no global object
 ## Development
 
 ```sh
-npm run dev        # rebuild on change
-npm run check      # typecheck, tests, build
-npm test           # unit and integration tests (they compile mt-pty and drive real shells)
-npm run package    # build and zip the plugin folder into dist/mac-terminal-<version>.zip
+npm run dev           # rebuild on change
+npm run check         # typecheck, tests, build
+npm test              # unit and integration tests (they compile mt-pty and drive real shells)
+npm run package       # build and zip the plugin folder into dist/mac-terminal-<version>.zip
+npm run build:helper  # compile native/mt-pty.c into native/mt-pty, the copy the build embeds
+npm run check:helper  # check that native/mt-pty matches the source on this Mac
 ```
+
+Tests and the helper scripts need the Xcode Command Line Tools (`xcode-select --install`). Commit `native/mt-pty` together with any change to `native/mt-pty.c`.
+
+To release, set the new version in `manifest.json`, `package.json` and `versions.json`, then push a tag with the same name (`git tag 1.0.1 && git push origin 1.0.1`). GitHub Actions tests, builds and publishes the release.
 
 | Path | What it is |
 | --- | --- |
 | `src/main.ts` | Plugin entry: commands, ribbon, file menu, settings |
 | `src/terminal-view.ts` | The terminal tab: xterm.js, keyboard, clipboard, lifecycle |
 | `src/pty.ts` | Starts and talks to the helper |
-| `native/mt-pty.c` | The pseudo-terminal helper (the build puts it inside `main.js`) |
+| `native/mt-pty.c`, `native/mt-pty` | The pseudo-terminal helper and its compiled copy (the build puts it inside `main.js`) |
 | `src/shell.ts`, `src/paths.ts`, `src/text.ts` | Shell and environment, vault paths, sanitizing and quoting |
 | `src/banner.ts`, `src/theme.ts`, `src/icon.ts` | Startup art, colors, icon |
 | `src/tag.ts`, `src/tag-modal.ts` | Name and color of a terminal |
 | `src/guards.ts` | Limits on escape sequences that would freeze the terminal |
 | `scripts/build.mjs`, `scripts/install.mjs`, `scripts/package.mjs` | Build into `dist/mac-terminal`, install into a vault, zip for release (`scripts/plugin-files.mjs` lists the files) |
+| `scripts/helper.mjs` | Compiles the helper |
+| `.github/workflows/release.yml` | Builds, attests and publishes a release for each version tag |
 
 The build also patches one line of xterm.js: it detects Node.js-like environments and then ignores the Mac, which would turn Option into Meta. The build stops if a future xterm version changes that line.
 

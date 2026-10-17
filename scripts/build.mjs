@@ -2,16 +2,17 @@
 //   main.js       the bundled plugin (xterm.js included), with the mt-pty helper inside
 //   styles.css    xterm.css + src/styles.css
 //   manifest.json
-// mt-pty (native/mt-pty.c, a universal binary) goes into main.js together with its
-// SHA-256, so the plugin is three files that Obsidian Sync can carry.
+// mt-pty goes into main.js together with its SHA-256, so the plugin is three files
+// that Obsidian Sync can carry. The build takes the compiled copy kept in the
+// repository (native/mt-pty, see scripts/helper.mjs), so it needs no compiler and
+// gives the same main.js on any machine.
 import { createHash } from 'node:crypto';
 import { builtinModules } from 'node:module';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import esbuild from 'esbuild';
-import { compileHelper } from './helper.mjs';
+import { HELPER_BINARY } from './helper.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
@@ -48,18 +49,16 @@ const xtermPlatformFix = {
 	},
 };
 
-function buildHelper() {
-	const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-pty-build-'));
-	try {
-		return fs.readFileSync(compileHelper(path.join(temp, 'mt-pty')));
-	} finally {
-		fs.rmSync(temp, { recursive: true, force: true });
-	}
+/** The compiled helper; a universal Mach-O file starts with 0xcafebabe. */
+function readHelper() {
+	const helper = fs.readFileSync(HELPER_BINARY);
+	if (helper.readUInt32BE(0) !== 0xcafebabe) throw new Error(`${path.relative(root, HELPER_BINARY)} is not a universal macOS executable: npm run build:helper`);
+	return helper;
 }
 
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
-const helper = buildHelper();
+const helper = readHelper();
 const helperHash = createHash('sha256').update(helper).digest('hex');
 writeStatic();
 
@@ -72,7 +71,9 @@ const context = await esbuild.context({
 	target: 'es2022',
 	external: ['obsidian', 'electron', '@codemirror/*', '@lezer/*', ...builtinModules, ...builtinModules.map((m) => `node:${m}`)],
 	define: { MT_PTY_SHA256: JSON.stringify(helperHash), MT_PTY_BASE64: JSON.stringify(helper.toString('base64')) },
-	banner: { js: `/* ${manifest.name} ${manifest.version}, bundled with xterm.js (MIT). Source: src/ */` },
+	banner: {
+		js: `/* ${manifest.name} ${manifest.version}, bundled with xterm.js (MIT). Source: src/. The base64 string is native/mt-pty, the pseudo-terminal helper compiled from native/mt-pty.c (sha256 ${helperHash}). */`,
+	},
 	logLevel: 'info',
 	treeShaking: true,
 	minify: false,
