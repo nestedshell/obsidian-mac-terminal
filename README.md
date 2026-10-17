@@ -64,6 +64,7 @@ To update, copy the three new files into the `mac-terminal` folder and reload Ob
 
 - **Runs programs.** It starts your login shell, and the commands you type run with your user's permissions, as in Terminal.app.
 - **Files outside the vault.** A terminal can reach any folder your account can. The plugin itself writes only its settings (`data.json`, in its plugin folder) and a copy of its helper in `$TMPDIR/mac-terminal-<user id>/`. It also reads which shell your account uses and which locales are installed.
+- **Clipboard, only when you ask.** It writes the selection when you copy (⌘C or the menu) and reads the clipboard only when you paste (⌘V or the menu).
 - **No network, no accounts, no telemetry.**
 - **Open source, helper included.** The long base64 string in `main.js` is `native/mt-pty`, compiled from `native/mt-pty.c`. The build is reproducible, and each release is built by GitHub Actions with a provenance attestation.
 

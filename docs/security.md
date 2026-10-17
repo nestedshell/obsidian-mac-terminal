@@ -6,6 +6,7 @@ What Embedded Mac Terminal can reach, and what it protects you from. For a short
 
 - **Runs programs.** It starts your login shell, and what you type runs with your user's permissions, as in Terminal.app.
 - **Files outside the vault.** A terminal is not limited to the vault: you can `cd` anywhere, and the commands you run can read and change any file your account can. The plugin itself writes only its settings (`data.json`, in its plugin folder) and the copy of its helper, in a private folder of the macOS temporary directory (`$TMPDIR/mac-terminal-<user id>/`). To start the shell the way Terminal.app does, it also looks up your account's shell and the installed locales.
+- **Clipboard, only when you ask.** It writes the selection when you copy (⌘C or the menu) and reads the clipboard only when you paste (⌘V or the menu). Pasted text is cleaned first (see [Safe paste](#protections)).
 - **No network, no accounts, no telemetry.** The plugin makes no network requests. Links you ⌘-click open in your browser.
 - **All open source, helper included.** The long base64 string in `main.js` is `native/mt-pty`, compiled from `native/mt-pty.c` in this repository. `npm run build` gives the same `main.js`, byte for byte, on macOS and Linux, and every release is built by GitHub Actions from its tag, with a build provenance attestation (`gh attestation verify main.js --repo nestedshell/obsidian-mac-terminal`).
 
